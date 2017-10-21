@@ -49,6 +49,11 @@ static int shouldSayTRIO (Game game);
 
 // Check if player has said (x) after playing a card
 static int hasCalled (Game game, action call);
+// Returns index of playable card from hand
+static int playableCard(Game game);
+
+// Returns color that is active (i.e. takes into account declares)
+static color declaredColor(Game game);
 
 // This function is to be implemented by the A.I.
 // It will be called when the player can make an action on their turn.
@@ -81,38 +86,125 @@ static int hasCalled (Game game, action call);
 
 
 playerMove decideMove(Game game) {
-    // Start out by making a move struct, to say what our move is.
+    // Get data
+    int lastPlayer = cyclePlayer(currentPlayer(game),
+        swapDirection(playDirection(game)));
+    int i = 0;
+    int priority = 0;
+    Card topCard = topDiscard(game);
     playerMove move;
-    
-    // 1. Call someone out if we can (n/a)
-    // 2. Say something if we should (just played, has certain card count)
-    if (shouldSayUNO(game) == TRUE) {
-        move.action = SAY_UNO;
-    } else if (shouldSayDUO(game) == TRUE) {
-        move.action = SAY_DUO;
-    } else if (shouldSayTRIO(game) == TRUE) {
-        move.action = SAY_TRIO;
-    }
-    // else if (cardValue(topDiscard(game)) == DECLARE) {
-    //} 
-    // 3. Play a card if we can
-        // Match with top card, or
-        // Match's declared color
-    // 4. Pick up a card if valid.
-    // 5. End turn
+    // Is this the start of the current players turn?
+    int firstMove = TRUE;
+    playerMove opponentMove;
+    playerMove currentPlayerMove;
+    playerMove lastPlayerMove;
+    int lastAction = -1;
+    int oppUsed[6] = {FALSE};
+    int playerUsed[6] = {FALSE};
+    int numCardsDrawn = 0;
+    int oppCardsPlayed = 0;
+    int opponentValuePlayed = -1;
+    int opponentMoves = turnMoves(game, currentTurn(game) - 1);
+    int playerMoves = turnMoves(game, currentTurn(game));
+    int canCallOut = TRUE;
 
-    // Set our move to be END_TURN, and check whether that's
-    // a valid move -- if it is, then just end our turn (for now).
-    move.action = END_TURN;
+    if (turnMoves(game, currentTurn(game)) != 0) {
+        firstMove = FALSE;
+    }
+
+    // Loop through opponents turn to see what they played
+    int foundOpponentCard = FALSE;
+    int j = 1;
+    while (j <= opponentMoves && foundOpponentCard == FALSE) {
+        opponentMove = pastMove(game, currentTurn(game) - 1,
+            opponentMoves - j);
+        if (opponentMove.action == PLAY_CARD) {
+            opponentValuePlayed = cardValue(opponentMove.card);
+            foundOpponentCard = TRUE;
+            oppCardsPlayed++;
+        }
+        oppUsed[opponentMove.action] = TRUE;
+        j++;
+    }
+
+    j = 1;
+    // Check if the current player has drawn two or more
+    while (j <= playerMoves) {
+        currentPlayerMove = pastMove(game, currentTurn(game),
+            playerMoves - j);
+        if (j == 1) {
+            // Get last move player took
+            lastPlayerMove = currentPlayerMove;
+            lastAction = lastPlayerMove.action;
+        }
+        playerUsed[currentPlayerMove.action] = TRUE;
+
+        if (currentPlayerMove.action == DRAW_CARD) {
+            canCallOut = FALSE;
+            numCardsDrawn++;
+        } else if (currentPlayerMove.action == PLAY_CARD) {
+            canCallOut = FALSE;
+        }
+        j++;
+    }
+
+    // Set default move
+    move.action = DRAW_CARD;
+
+    if (shouldCall(game, SAY_UNO, lastAction, oppCardsPlayed)) {
+        move.action = SAY_UNO;
+    } else if (shouldCall(game, SAY_DUO, lastAction, oppCardsPlayed)) {
+        move.action = SAY_DUO;
+    } else if (shouldCall(game, SAY_TRIO, lastAction, oppCardsPlayed)) {
+        move.action = SAY_TRIO;
+    // Check if I just played a card that wasn't a continue
+    // (or drew a card), if so end turn
+    } else if (player == lastPlayer
+        && playerDiscarded(game, turn, lastPlayer) == TRUE) {
+            move.action = END_TURN;
+    } else {
+        // Loop through all cards, see if any can be played.
+        while (i < handCardCount(game)) {
+            printf("mPlayer0 go\n");
+            Card currentCard = handCard(game, i);
+            // Check if can play a draw two on a draw two
+            if ((cardValue(topCard) == DRAW_TWO
+                && cardValue(currentCard) == DRAW_TWO)) {
+                move.action = PLAY_CARD;
+                move.card = currentCard;
+                priority = 3;
+            // Check if a wild was played - if so what color
+            } else if ((cardValue(topCard) == DECLARE
+                && cardColor(currentCard) == declaredColor(game))
+                && priority < 3) {
+                move.action = PLAY_CARD;
+                move.card = currentCard;
+                priority = 2;
+            // Check if any cards can be played normally
+            // TODO: will try to illegally play on a draw two
+            } else if ((cardSuit(currentCard) == cardSuit(topCard)
+                || cardColor(currentCard) == cardColor(topCard)
+                || cardValue(currentCard) == cardValue(topCard))
+                && priority < 1) {
+                move.action = PLAY_CARD;
+                move.card = currentCard;
+                priority = 1;
+            }
+            i++;
+            // TODO: Declare color
+        }
+    }
 
     return move;
 }
 
-static int canPlayCard(Game game) {
+// Returns index of a playable card
+static int playableCard(Game game) {
     int cardIndex = NOT_FOUND;
     if (cardValue(topDiscard(game)) == DECLARE) {
-        
-        //cardIndex = findMatchingCardColor(game, );
+        cardIndex = findMatchingCardColor(game, declaredColor(game));
+    } else if (cardValue(topDiscard(game)) == TWO) {
+        cardIndex
     }
     
     return cardIndex;
@@ -161,12 +253,19 @@ static int canDrawCard (Game game) {
 // valid move to SAY_UNO.
 // For now, just deal with the simple situation: "claim card".
 // Note: there are several possible ways to determine this.
-static int shouldSayUNO (Game game) {
-    int sayUno = FALSE;
-    if ((handCardCount(game) == 1) && (hasCalled(game, SAY_UNO) == FALSE)) {
-        sayUno = TRUE;
+static int shouldCall (Game game, action call, action lastAction, int oppCardsPlayed) {
+    int say = FALSE;
+    // Assume is valid (that check is elsewhere)
+    if (lastAction == PLAY_CARD && (handCardCount(game) == call - 1)) {
+        say = TRUE;
+    } else if (lastAction == -1) {
+        int opponentCards = playerCardCount(game, lastPlayer);
+        if (opponentCards <= (call - 1)
+            && opponentCards + oppCardsPlayed > (call - 1)) {
+            say = TRUE;
+        }
     }
-    return sayUno;
+    return say;
 }
 
 // Determine whether the current player should SAY_DUO.
@@ -210,4 +309,27 @@ static int hasCalled (Game game, action call) {
     }
     
     return callHasBeenSaid;
+}
+
+
+// Return the active color
+static color declaredColor(Game game) {
+    color declared = cardColor(topDiscard(game));
+    if (cardValue(topDiscard(game)) == DECLARE) {
+        int foundDeclared = -1;
+        while (foundDeclared == -1) {
+            int turn = currentTurn(game) - 1;
+            while (turn >= 0) {
+                int moveNumber = turnMoves(game, turn) - 1;
+                playerMove move = pastMove(game, turn, moveNumber);
+                if (move.action == PLAY_CARD
+                    && cardValue(move.card) == DECLARE) {
+                    declared = move.nextColor;
+                }
+            }
+
+        }
+    }
+
+    return declared;
 }
