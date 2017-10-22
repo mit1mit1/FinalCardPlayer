@@ -9,6 +9,7 @@
 
 #include "Game.h"
 #include "player.h"
+#include <stdio.h>
 
 #define NOT_FOUND -1
 
@@ -54,6 +55,15 @@ static int playableCard(Game game);
 
 // Returns color that is active (i.e. takes into account declares)
 static color declaredColor(Game game);
+
+static color commonestColor(Game game);
+
+static int shouldCall (Game game, action call, int lastPlayer, action lastAction, int oppCardsPlayed);
+
+static int findMatchingCardValue (Game game, value value);
+static int cyclePlayer(int player, direction gameDirection);
+static int playerDiscarded(Game game, int turn, int player);
+static direction swapDirection(direction toSwap);
 
 // This function is to be implemented by the A.I.
 // It will be called when the player can make an action on their turn.
@@ -107,6 +117,7 @@ playerMove decideMove(Game game) {
     int opponentMoves = turnMoves(game, currentTurn(game) - 1);
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
+    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO != NOT_FOUND);
 
     if (turnMoves(game, currentTurn(game)) != 0) {
         firstMove = FALSE;
@@ -151,16 +162,27 @@ playerMove decideMove(Game game) {
     // Set default move
     move.action = DRAW_CARD;
 
-    if (shouldCall(game, SAY_UNO, lastAction, oppCardsPlayed)) {
+    if (shouldCall(game, SAY_UNO, lastPlayer, lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_UNO;
-    } else if (shouldCall(game, SAY_DUO, lastAction, oppCardsPlayed)) {
+    } else if (shouldCall(game, SAY_DUO, lastPlayer, lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_DUO;
-    } else if (shouldCall(game, SAY_TRIO, lastAction, oppCardsPlayed)) {
+    } else if (shouldCall(game, SAY_TRIO, lastPlayer, lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_TRIO;
     // Check if I just played a card that wasn't a continue
     // (or drew a card), if so end turn
-    } else if (player == lastPlayer
-        && playerDiscarded(game, turn, lastPlayer) == TRUE) {
+    } else if (currentPlayer(game) == lastPlayer
+        && playerDiscarded(game, currentTurn(game), lastPlayer) == TRUE) {
+            move.action = END_TURN;
+    } else if (opponentValuePlayed == DRAW_TWO
+        && numCardsDrawn == 0
+        && drawTwoPos != NOT_FOUND) {
+            move.action = PLAY_CARD;
+            move.card = handCard(game, drawTwoPos);
+    } else if (opponentValuePlayed == DRAW_TWO
+        && numCardsDrawn <= 2) {
+            move.action = DRAW_CARD;
+    } else if (opponentValuePlayed == DRAW_TWO
+        && numCardsDrawn == 2) {
             move.action = END_TURN;
     } else {
         // Loop through all cards, see if any can be played.
@@ -181,7 +203,6 @@ playerMove decideMove(Game game) {
                 move.card = currentCard;
                 priority = 2;
             // Check if any cards can be played normally
-            // TODO: will try to illegally play on a draw two
             } else if ((cardSuit(currentCard) == cardSuit(topCard)
                 || cardColor(currentCard) == cardColor(topCard)
                 || cardValue(currentCard) == cardValue(topCard))
@@ -191,7 +212,10 @@ playerMove decideMove(Game game) {
                 priority = 1;
             }
             i++;
-            // TODO: Declare color
+        }
+        if (move.action == PLAY_CARD
+            && cardValue(move.card) == DECLARE) {
+            move.nextColor = commonestColor(game);
         }
     }
 
@@ -203,9 +227,10 @@ static int playableCard(Game game) {
     int cardIndex = NOT_FOUND;
     if (cardValue(topDiscard(game)) == DECLARE) {
         cardIndex = findMatchingCardColor(game, declaredColor(game));
-    } else if (cardValue(topDiscard(game)) == TWO) {
-        cardIndex
     }
+    //  else if (cardValue(topDiscard(game)) == TWO) {
+    //     cardIndex++
+    // }
     
     return cardIndex;
 }
@@ -218,6 +243,22 @@ static int findMatchingCardColor (Game game, color color) {
     int match = NOT_FOUND;
     while (i < handCardCount(game)) {
         if (cardColor(handCard(game, i)) == color) {
+            match = i;
+        }
+        i++;
+    }
+    
+    return match;
+}
+
+// Find a card in the player's hand that matches the specified value,
+// if such a card exists.
+// Returns the card index, or NOT_FOUND if no matching card was found.
+static int findMatchingCardValue (Game game, value value) {
+    int i = 0;
+    int match = NOT_FOUND;
+    while (i < handCardCount(game)) {
+        if (cardValue(handCard(game, i)) == value) {
             match = i;
         }
         i++;
@@ -253,7 +294,7 @@ static int canDrawCard (Game game) {
 // valid move to SAY_UNO.
 // For now, just deal with the simple situation: "claim card".
 // Note: there are several possible ways to determine this.
-static int shouldCall (Game game, action call, action lastAction, int oppCardsPlayed) {
+static int shouldCall (Game game, action call, int lastPlayer, action lastAction, int oppCardsPlayed) {
     int say = FALSE;
     // Assume is valid (that check is elsewhere)
     if (lastAction == PLAY_CARD && (handCardCount(game) == call - 1)) {
@@ -332,4 +373,66 @@ static color declaredColor(Game game) {
     }
 
     return declared;
+}
+
+static color commonestColor(Game game) {
+    int i = RED;
+    int currentCount = 0;
+    int greatestCount = 0;
+    int handSize = handCardCount(game);
+    color commonest = RED;
+
+    while (i <= PURPLE) {
+        int j = 0;
+        while (j < handSize) {
+            if (cardColor(handCard(game, j)) == i) {
+                currentCount++;
+            }
+        }
+        if (currentCount > greatestCount) {
+            commonest = i;
+            greatestCount = currentCount;
+        }
+        i++;
+    }
+
+    return commonest;
+}
+
+
+// Return the player that should go next
+static int cyclePlayer(int player, direction gameDirection) {
+    if (gameDirection == CLOCKWISE) {
+        player++;
+    } else {
+        player--;
+    }
+    player = player % 4;
+    if (player < 0) {
+        player += 4;
+    }
+
+    return player;
+}
+
+// Check if a player discarded at any point during a turn
+static int playerDiscarded(Game game, int turn, int player) {
+    int i = 0;
+    while (i < turnMoves(game, turn)) {
+        if (pastMove(game, turn, i).action == PLAY_CARD) {
+            return TRUE;
+        }
+        i++;
+    }
+    return FALSE;
+}
+
+
+// Return opposite direction
+static direction swapDirection(direction toSwap) {
+    if (toSwap == CLOCKWISE) {
+        return ANTICLOCKWISE;
+    } else {
+        return CLOCKWISE;
+    }
 }
