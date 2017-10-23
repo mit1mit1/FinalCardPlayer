@@ -58,7 +58,7 @@ static color declaredColor(Game game);
 
 static color commonestColor(Game game);
 
-static int shouldCall (Game game, action call, int lastPlayer, action lastAction, int oppCardsPlayed);
+static int shouldCall (Game game, action call, int lastPlayer, int lastAction, int oppCardsPlayed);
 
 static int findMatchingCardValue (Game game, value value);
 static int cyclePlayer(int player, direction gameDirection);
