@@ -58,7 +58,8 @@ static color declaredColor(Game game);
 
 static color commonestColor(Game game);
 
-static int shouldCall (Game game, action call, int lastPlayer, int lastAction, int oppCardsPlayed);
+static int shouldCall (Game game, action call,
+    int lastPlayer, int lastAction, int oppCardsPlayed);
 
 static int findMatchingCardValue (Game game, value value);
 static int cyclePlayer(int player, direction gameDirection);
@@ -162,16 +163,20 @@ playerMove decideMove(Game game) {
     // Set default move
     move.action = DRAW_CARD;
 
-    if (shouldCall(game, SAY_UNO, lastPlayer, lastAction, oppCardsPlayed) == TRUE) {
+    if (shouldCall(game, SAY_UNO, lastPlayer,
+        lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_UNO;
-    } else if (shouldCall(game, SAY_DUO, lastPlayer, lastAction, oppCardsPlayed) == TRUE) {
+    } else if (shouldCall(game, SAY_DUO, lastPlayer,
+        lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_DUO;
-    } else if (shouldCall(game, SAY_TRIO, lastPlayer, lastAction, oppCardsPlayed) == TRUE) {
+    } else if (shouldCall(game, SAY_TRIO, lastPlayer,
+        lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_TRIO;
     // Check if I just played a card that wasn't a continue
     // (or drew a card), if so end turn
     } else if (currentPlayer(game) == lastPlayer
-        && playerDiscarded(game, currentTurn(game), lastPlayer) == TRUE) {
+        && playerDiscarded(game, currentTurn(game),
+            lastPlayer) == TRUE) {
             move.action = END_TURN;
     } else if (opponentValuePlayed == DRAW_TWO
         && numCardsDrawn == 0
@@ -294,7 +299,8 @@ static int canDrawCard (Game game) {
 // valid move to SAY_UNO.
 // For now, just deal with the simple situation: "claim card".
 // Note: there are several possible ways to determine this.
-static int shouldCall (Game game, action call, int lastPlayer, int lastAction, int oppCardsPlayed) {
+static int shouldCall (Game game, action call, int lastPlayer,
+    int lastAction, int oppCardsPlayed) {
     int say = FALSE;
     // Assume is valid (that check is elsewhere)
     if (lastAction == PLAY_CARD && (handCardCount(game) == call - 1)) {
