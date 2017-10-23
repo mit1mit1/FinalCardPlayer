@@ -294,7 +294,7 @@ static int canDrawCard (Game game) {
 // valid move to SAY_UNO.
 // For now, just deal with the simple situation: "claim card".
 // Note: there are several possible ways to determine this.
-static int shouldCall (Game game, action call, int lastPlayer, action lastAction, int oppCardsPlayed) {
+static int shouldCall (Game game, action call, int lastPlayer, int lastAction, int oppCardsPlayed) {
     int say = FALSE;
     // Assume is valid (that check is elsewhere)
     if (lastAction == PLAY_CARD && (handCardCount(game) == call - 1)) {
