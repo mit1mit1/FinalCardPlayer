@@ -38,8 +38,7 @@ typedef struct _cardList {
 
 //_____List of moves_______
 typedef struct _playerMove *PlayerMove;
-typedef struct _moveNode *MoveNode;
-typedef struct _turn *Turn;
+
 
 //_______________TURNLIST___________________
 typedef struct _turnNode *TurnNode;
@@ -221,10 +220,15 @@ Game newGame(int deckSize, value values[], color colors[], suit suits[]) {
     currentCard = new->deckPile.head;
     // Put it on the discard pile
     new->discardPile.head = currentCard;
-    // Replace the top fo the deck with the card below it.
+    // Replace the top of the deck with the card below it.
     new->deckPile.head = currentCard->next;
     // Make the bottom of the discard pile point to nothing
     currentCard->next = NULL;
+
+    // Reverse diection if card flipped was a reverse
+    if (cardValue(new->discardPile.head->card) == BACKWARDS) {
+        new->direction = ANTICLOCKWISE;
+    }
 
     return new;
 }
@@ -243,7 +247,7 @@ void destroyGame(Game game) {
     // Loop through all of deck
     while (currentCard != NULL) {
         // Free the actual card the node points to
-        free(currentCard->card);
+        destroyCard(currentCard->card);
         // Keep the pointer to the node, find the next node
         prevCard = currentCard;
         currentCard = currentCard->next;
@@ -255,7 +259,7 @@ void destroyGame(Game game) {
     currentCard = game->discardPile.head;
 
     while (currentCard != NULL) {
-        free(currentCard->card);
+        destroyCard(currentCard->card);
         prevCard = currentCard;
         currentCard = currentCard->next;
         free(prevCard);
@@ -267,7 +271,7 @@ void destroyGame(Game game) {
         currentCard = game->playerHands[i].head;
 
         while (currentCard != NULL) {
-            free(currentCard->card);
+            destroyCard(currentCard->card);
             prevCard = currentCard;
             currentCard = currentCard->next;
             free(prevCard);
@@ -275,13 +279,32 @@ void destroyGame(Game game) {
         i++;
     }
 
+    // Free past moves
+    TurnNode currentTurn = game->pastTurns;
+    TurnNode prevTurn;
+    MoveNode currentMove;
+    MoveNode prevMove;
+    while (currentTurn != NULL) {
+        currentMove = currentTurn->head;
+        // Free all moves for a turn in the same way as freeing cards
+        while (currentMove != NULL) {
+            free(&currentMove->move);
+            prevMove = currentMove;
+            currentMove = currentMove->next;
+            free(prevMove);
+        }
+        // Then, go to the next turn, and free the turn itself
+        prevTurn = currentTurn;
+        currentTurn = currentTurn->next;
+        free(prevTurn);
+    }
+
+
     // Free all the arrays that the struct points to
     free(game->playerHands);
     free(game->cardsOfColor);
     free(game->cardsOfSuit);
     free(game->cardsOfValue);
-
-    // Free past moves
 
     // Free the struct itself
     free(game);
@@ -305,7 +328,6 @@ int numOfSuit(Game game, suit suit) {
 // Get the number of cards in the initial deck of a particular color.
 int numOfColor(Game game, color color) {
     return game->cardsOfColor[color];
-
 }
 
 // Get the number of cards in the initial deck of a particular value.
@@ -332,7 +354,15 @@ int currentTurn(Game game) {
 //
 // This should _not_ be called by a player.
 int playerPoints(Game game, int player) {
-    return 0;
+    int total = 0;
+    CardNode currentCard = game->playerHands[player].head;
+
+    while (currentCard != NULL) {
+        total += cardValue(currentCard->card);
+        currentCard = currentCard->next;
+    }
+
+    return total;
 }
 
 // Get the current direction of play.
@@ -385,7 +415,7 @@ int turnMoves(Game game, int turn) {
             }
         }
     }
-    
+
     return numMoves;
 }
 
@@ -618,8 +648,10 @@ int isValidMove(Game game, playerMove move) {
     // At long last, check if player is allowed to play the card
     // they just played
     } else if (move.action == PLAY_CARD) {
+        if (numCardsDrawn != 0) {
+            isValid = FALSE;
         // Can only play a draw two if opponent played a draw two
-        if (opponentValuePlayed == DRAW_TWO
+        } else if (opponentValuePlayed == DRAW_TWO
             && cardValue(move.card) != DRAW_TWO) {
             isValid = FALSE;
         // Otherwise, can always play a wild
@@ -791,6 +823,7 @@ static int cyclePlayer(int player, direction gameDirection) {
         player--;
     }
     player = player % 4;
+
     if (player < 0) {
         player += 4;
     }
@@ -804,7 +837,7 @@ static int hasCard(Game game, Card card) {
     int i = 0;
 
     while (i < handCardCount(game) && hasIt == FALSE) {
-        if (cardsEqual(card, handCard(game, i))) {
+        if (cardsEqual(card, handCard(game, i)) == TRUE) {
             hasIt = TRUE;
         }
         i++;
@@ -958,12 +991,6 @@ static void playHandCard(Game game, playerMove move) {
 static void giveCards(Game game, int player, int numCards) {
     int i = 0;
 
-    CardNode currHandCard = game->playerHands[player].head;
-    while (currHandCard != NULL
-        && currHandCard->next != NULL) {
-        currHandCard = currHandCard->next;
-    }
-
     CardNode flipping;
 
     while (i < numCards) {
@@ -987,13 +1014,15 @@ static void giveCards(Game game, int player, int numCards) {
             }
         }
 
-        CardNode deckCard = game->deckPile.head;// changed to dot
-        game->deckPile.head = deckCard->next;// changed to dot
-        deckCard->next = NULL;
+        // Get a card from the deck, make the deck start with
+        // the card below it
+        CardNode deckCard = game->deckPile.head;
+        game->deckPile.head = deckCard->next;
 
-        currHandCard->next = deckCard;
+        // Put the deckcard at the front of the players hand
+        deckCard->next = game->playerHands[player].head;
+        game->playerHands[player].head = deckCard;
 
-        currHandCard = deckCard;
         i++;
     }
 
