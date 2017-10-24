@@ -163,6 +163,7 @@ playerMove decideMove(Game game) {
     // Set default move
     move.action = DRAW_CARD;
 
+    // Call out if necessary
     if (shouldCall(game, SAY_UNO, lastPlayer,
         lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_UNO;
@@ -172,17 +173,19 @@ playerMove decideMove(Game game) {
     } else if (shouldCall(game, SAY_TRIO, lastPlayer,
         lastAction, oppCardsPlayed) == TRUE) {
         move.action = SAY_TRIO;
-    // Check if I just played a card that wasn't a continue
-    // (or drew a card), if so end turn
-    } else if (currentPlayer(game) == lastPlayer
-        && playerDiscarded(game, currentTurn(game),
-            lastPlayer) == TRUE) {
+    // Check if I just played a card that wasn't a continue,
+    // if so end turn
+    } else if (lastAction == PLAY_CARD
+        && cardValue(lastMove.card) != CONTINUE) {
             move.action = END_TURN;
+    // Play DRAW_TWO on last DRAW_TWO if possible
     } else if (opponentValuePlayed == DRAW_TWO
         && numCardsDrawn == 0
         && drawTwoPos != NOT_FOUND) {
             move.action = PLAY_CARD;
             move.card = handCard(game, drawTwoPos);
+    // Check if I need to draw two
+    // TODO: Add case for stacking of draw twos
     } else if (opponentValuePlayed == DRAW_TWO
         && numCardsDrawn <= 2) {
             move.action = DRAW_CARD;
@@ -218,6 +221,8 @@ playerMove decideMove(Game game) {
             }
             i++;
         }
+
+        // Declare color if necessary
         if (move.action == PLAY_CARD
             && cardValue(move.card) == DECLARE) {
             move.nextColor = commonestColor(game);

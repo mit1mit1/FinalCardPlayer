@@ -570,7 +570,8 @@ int isValidMove(Game game, playerMove move) {
         j++;
     }
 
-    // Always allowed to draw a card
+    // Allowed to draw 1 normally, 2*drawtwosplayed otherwise
+    // TODO: Add case for stacking of draw twos
     if (move.action == DRAW_CARD) {
         if (opponentValuePlayed == DRAW_TWO) {
             if (numCardsDrawn >= 2) {
