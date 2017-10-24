@@ -104,7 +104,7 @@ playerMove decideMove(Game game) {
     int playerUsed[6] = {FALSE};
     int numCardsDrawn = 0;
     int oppCardsPlayed = 0;
-    int oppPlayedDT = -1;
+    int oppPlayedDT = FALSE;
     int opponentMoves = 0;
     
     if (currentTurn(game) > 0) {
@@ -134,6 +134,13 @@ playerMove decideMove(Game game) {
         }
         oppUsed[opponentMove.action] = TRUE;
         j++;
+        
+    }
+   
+    if (oppPlayedDT == TRUE) {
+        printf("Opponent has played DRAW_TWO\n");
+    } else if (oppPlayedDT == FALSE) {
+        printf("Opponent has not played DRAW_TWO\n");
     }
 
     j = 1;
@@ -198,7 +205,7 @@ playerMove decideMove(Game game) {
             move.action = END_TURN;
     } else if (numCardsDrawn == 1) {
             move.action = END_TURN;
-    } else {
+    } else if (oppPlayedDT == FALSE) {
         // Loop through all cards, see if any can be played.
         while (i < handCardCount(game)) {
             Card currentCard = handCard(game, i);
