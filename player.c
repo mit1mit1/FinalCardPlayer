@@ -113,7 +113,7 @@ playerMove decideMove(Game game) {
 
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
-    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO != NOT_FOUND);
+    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
 
     if (playerMoves != 0) {
         firstMove = FALSE;
