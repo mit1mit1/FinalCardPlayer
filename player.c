@@ -166,7 +166,13 @@ playerMove decideMove(Game game) {
     }
 
     // Set default move
-    move.action = DRAW_CARD;
+    //IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
+    //IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
+    if (lastAction == DRAW_CARD) {
+        move.action = END_TURN;
+    } else {
+        move.action = DRAW_CARD;
+    }
 
     // Call out if necessary
     if (shouldCall(game, SAY_UNO, lastPlayer,
