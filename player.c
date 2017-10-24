@@ -10,60 +10,50 @@
 #include "Game.h"
 #include "player.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #define NOT_FOUND -1
 
-// Find a card in the player's hand that matches the specified color,
-// if such a card exists.
-// Returns the card index, or NOT_FOUND if no matching card was found.
-static int findMatchingCardColor (Game game, color color);
+// Determine whether the player can currently draw a card.
+// If they can't draw a card, they should probably end their turn.
+static int canDrawCard (Game game);
+
+// Returns color most prevelant in current player's hand
+static color commonestColor(Game game);
+
+// Go to next player based on direction
+static int cyclePlayer(int player, direction gameDirection);
+
+// Returns color that is active (i.e. takes into account declares)
+static color declaredColor(Game game);
 
 // Do two cards match on either value, color, or suit?
 // Returns TRUE if they match any of the above features, and
 // FALSE if they don't match on any of the above features.
 static int doCardsMatch (Card first, Card second);
 
-// Determine whether the player can currently draw a card.
-// If they can't draw a card, they should probably end their turn.
-static int canDrawCard (Game game);
+// Find a card in the player's hand that matches the specified color,
+// if such a card exists.
+// Returns the card index, or NOT_FOUND if no matching card was found.
+static int findMatchingCardColor (Game game, color color);
 
-// Determine whether the current player should SAY_UNO.
-// There are two different situations where it could be a
-// valid move to SAY_UNO.
-// For now, just deal with the simple situation: "claim card".
-// Note: there are several possible ways to determine this.
-static int shouldSayUNO (Game game);
-
-// Determine whether the current player should SAY_UNO.
-// There are two different situations where it could be a
-// valid move to SAY_DUO.
-// For now, just deal with the simple situation: "claim card".
-// Note: there are several possible ways to determine this.
-static int shouldSayDUO (Game game);
-
-// Determine whether the current player should SAY_UNO.
-// There are two different situations where it could be a
-// valid move to SAY_TRIO.
-// For now, just deal with the simple situation: "claim card".
-// Note: there are several possible ways to determine this.
-static int shouldSayTRIO (Game game);
+// Find index of card of a particular value in current player's hand.
+static int findMatchingCardValue (Game game, value value);
 
 // Check if player has said (x) after playing a card
 static int hasCalled (Game game, action call);
+
 // Returns index of playable card from hand
 static int playableCard(Game game);
 
-// Returns color that is active (i.e. takes into account declares)
-static color declaredColor(Game game);
+// Check if a anyone discarded on a particular turn
+static int playerDiscarded(Game game, int turn);
 
-static color commonestColor(Game game);
-
+// Check if it is correct to make a particular call
 static int shouldCall (Game game, action call,
     int lastPlayer, int lastAction, int oppCardsPlayed);
 
-static int findMatchingCardValue (Game game, value value);
-static int cyclePlayer(int player, direction gameDirection);
-static int playerDiscarded(Game game, int turn, int player);
+// Return the opposite direction
 static direction swapDirection(direction toSwap);
 
 // This function is to be implemented by the A.I.
@@ -203,6 +193,8 @@ playerMove decideMove(Game game) {
     } else if (opponentValuePlayed == DRAW_TWO
         && numCardsDrawn == 2) {
             move.action = END_TURN;
+    } else if (numCardsDrawn == 1) {
+            move.action = END_TURN;
     } else {
         // Loop through all cards, see if any can be played.
         while (i < handCardCount(game)) {
@@ -243,64 +235,8 @@ playerMove decideMove(Game game) {
     return move;
 }
 
-// Returns index of a playable card
-static int playableCard(Game game) {
-    int cardIndex = NOT_FOUND;
-    if (cardValue(topDiscard(game)) == DECLARE) {
-        cardIndex = findMatchingCardColor(game, declaredColor(game));
-    }
-    //  else if (cardValue(topDiscard(game)) == TWO) {
-    //     cardIndex++
-    // }
-    
-    return cardIndex;
-}
+// STATIC HELPER FUNCTIONS
 
-// Find a card in the player's hand that matches the specified color,
-// if such a card exists.
-// Returns the card index, or NOT_FOUND if no matching card was found.
-static int findMatchingCardColor (Game game, color color) {
-    int i = 0;
-    int match = NOT_FOUND;
-    while (i < handCardCount(game)) {
-        if (cardColor(handCard(game, i)) == color) {
-            match = i;
-        }
-        i++;
-    }
-    
-    return match;
-}
-
-// Find a card in the player's hand that matches the specified value,
-// if such a card exists.
-// Returns the card index, or NOT_FOUND if no matching card was found.
-static int findMatchingCardValue (Game game, value value) {
-    int i = 0;
-    int match = NOT_FOUND;
-    while (i < handCardCount(game)) {
-        if (cardValue(handCard(game, i)) == value) {
-            match = i;
-        }
-        i++;
-    }
-    
-    return match;
-}
-
-// Do two cards match on either value, color, or suit?
-// Returns TRUE if they match any of the above features, and
-// FALSE if they don't match on any of the above features.
-static int doCardsMatch (Card first, Card second) {
-    int match = FALSE;
-    if (cardValue(first) == cardValue(second)
-        || cardSuit(first) == cardSuit(second)
-        || cardColor(first) == cardSuit(second)) {
-        match = TRUE;
-    }
-
-    return match;
-}
 
 // Determine whether the player can currently draw a card.
 // If they can't draw a card, they should probably end their turn.
@@ -308,93 +244,6 @@ static int canDrawCard (Game game) {
     playerMove move;
     move.action = DRAW_CARD;
     return isValidMove(game, move);
-}
-
-// Determine whether the current player should SAY_UNO.
-// There are two different situations where it could be a
-// valid move to SAY_UNO.
-// For now, just deal with the simple situation: "claim card".
-// Note: there are several possible ways to determine this.
-static int shouldCall (Game game, action call, int lastPlayer,
-    int lastAction, int oppCardsPlayed) {
-    int say = FALSE;
-    // Assume is valid (that check is elsewhere)
-    if (lastAction == PLAY_CARD && (handCardCount(game) == call - 1)) {
-        say = TRUE;
-    } else if (lastAction == -1) {
-        int opponentCards = playerCardCount(game, lastPlayer);
-        if (opponentCards <= (call - 1)
-            && opponentCards + oppCardsPlayed > (call - 1)) {
-            say = TRUE;
-        }
-    }
-    return say;
-}
-
-// Determine whether the current player should SAY_DUO.
-// There are two different situations where it could be a
-// valid move to SAY_DUO.
-// For now, just deal with the simple situation: "claim card".
-// Note: there are several possible ways to determine this.
-static int shouldSayDUO (Game game) {
-    int sayDuo = FALSE;
-    if ((handCardCount(game) == 2) && (hasCalled(game, SAY_DUO) == FALSE)) {
-        sayDuo = TRUE;
-    }
-    return sayDuo;
-}
-
-// Determine whether the current player should SAY_TRIO.
-// There are two different situations where it could be a
-// valid move to SAY_TRIO.
-// For now, just deal with the simple situation: "claim card".
-// Note: there are several possible ways to determine this.
-static int shouldSayTRIO (Game game) {
-    int sayTrio = FALSE;
-    if ((handCardCount(game) == 2) && (hasCalled(game, SAY_TRIO) == FALSE)) {
-        sayTrio = TRUE;
-    }
-    return sayTrio;
-}
-
-static int hasCalled (Game game, action call) {
-    int i = 0;
-    int callHasBeenSaid = FALSE;
-    int cardHasBeenPlayed = FALSE;
-    while (i < turnMoves(game, currentTurn(game))) {
-        playerMove move = pastMove(game, currentTurn(game), i);
-        if (move.action == PLAY_CARD) {
-            cardHasBeenPlayed = TRUE;
-        }
-        if ((move.action == call) && (cardHasBeenPlayed == TRUE)) {
-            callHasBeenSaid = TRUE;
-        }
-    }
-    
-    return callHasBeenSaid;
-}
-
-
-// Return the active color
-static color declaredColor(Game game) {
-    color declared = cardColor(topDiscard(game));
-    if (cardValue(topDiscard(game)) == DECLARE) {
-        int foundDeclared = -1;
-        while (foundDeclared == -1) {
-            int turn = currentTurn(game) - 1;
-            while (turn >= 0) {
-                int moveNumber = turnMoves(game, turn) - 1;
-                playerMove move = pastMove(game, turn, moveNumber);
-                if (move.action == PLAY_CARD
-                    && cardValue(move.card) == DECLARE) {
-                    declared = move.nextColor;
-                }
-            }
-
-        }
-    }
-
-    return declared;
 }
 
 static color commonestColor(Game game) {
@@ -437,8 +286,106 @@ static int cyclePlayer(int player, direction gameDirection) {
     return player;
 }
 
+// Return the active color
+static color declaredColor(Game game) {
+    color declared = cardColor(topDiscard(game));
+    if (cardValue(topDiscard(game)) == DECLARE) {
+        int foundDeclared = -1;
+        while (foundDeclared == -1) {
+            int turn = currentTurn(game) - 1;
+            while (turn >= 0) {
+                int moveNumber = turnMoves(game, turn) - 1;
+                playerMove move = pastMove(game, turn, moveNumber);
+                if (move.action == PLAY_CARD
+                    && cardValue(move.card) == DECLARE) {
+                    declared = move.nextColor;
+                }
+            }
+
+        }
+    }
+
+    return declared;
+}
+
+// Do two cards match on either value, color, or suit?
+// Returns TRUE if they match any of the above features, and
+// FALSE if they don't match on any of the above features.
+static int doCardsMatch (Card first, Card second) {
+    int match = FALSE;
+    if (cardValue(first) == cardValue(second)
+        || cardSuit(first) == cardSuit(second)
+        || cardColor(first) == cardSuit(second)) {
+        match = TRUE;
+    }
+
+    return match;
+}
+
+// Find a card in the player's hand that matches the specified color,
+// if such a card exists.
+// Returns the card index, or NOT_FOUND if no matching card was found.
+static int findMatchingCardColor (Game game, color color) {
+    int i = 0;
+    int match = NOT_FOUND;
+    while (i < handCardCount(game)) {
+        if (cardColor(handCard(game, i)) == color) {
+            match = i;
+        }
+        i++;
+    }
+    
+    return match;
+}
+
+// Find a card in the player's hand that matches the specified value,
+// if such a card exists.
+// Returns the card index, or NOT_FOUND if no matching card was found.
+static int findMatchingCardValue (Game game, value value) {
+    int i = 0;
+    int match = NOT_FOUND;
+    while (i < handCardCount(game)) {
+        if (cardValue(handCard(game, i)) == value) {
+            match = i;
+        }
+        i++;
+    }
+    
+    return match;
+}
+
+static int hasCalled (Game game, action call) {
+    int i = 0;
+    int callHasBeenSaid = FALSE;
+    int cardHasBeenPlayed = FALSE;
+    while (i < turnMoves(game, currentTurn(game))) {
+        playerMove move = pastMove(game, currentTurn(game), i);
+        if (move.action == PLAY_CARD) {
+            cardHasBeenPlayed = TRUE;
+        }
+        if ((move.action == call) && (cardHasBeenPlayed == TRUE)) {
+            callHasBeenSaid = TRUE;
+        }
+    }
+    
+    return callHasBeenSaid;
+}
+
+// Returns index of a playable card
+static int playableCard(Game game) {
+    int cardIndex = NOT_FOUND;
+    if (cardValue(topDiscard(game)) == DECLARE) {
+        cardIndex = findMatchingCardColor(game, declaredColor(game));
+    }
+    //  else if (cardValue(topDiscard(game)) == TWO) {
+    //     cardIndex++
+    // }
+    
+    return cardIndex;
+}
+
 // Check if a player discarded at any point during a turn
-static int playerDiscarded(Game game, int turn, int player) {
+static int playerDiscarded(Game game, int turn) {
     int i = 0;
     while (i < turnMoves(game, turn)) {
         if (pastMove(game, turn, i).action == PLAY_CARD) {
@@ -447,6 +394,27 @@ static int playerDiscarded(Game game, int turn, int player) {
         i++;
     }
     return FALSE;
+}
+
+// Determine whether the current player should SAY_UNO.
+// There are two different situations where it could be a
+// valid move to SAY_UNO.
+// For now, just deal with the simple situation: "claim card".
+// Note: there are several possible ways to determine this.
+static int shouldCall (Game game, action call, int lastPlayer,
+    int lastAction, int oppCardsPlayed) {
+    int say = FALSE;
+    // Assume is valid (that check is elsewhere)
+    if (lastAction == PLAY_CARD && (handCardCount(game) == call - 1)) {
+        say = TRUE;
+    } else if (lastAction == -1) {
+        int opponentCards = playerCardCount(game, lastPlayer);
+        if (opponentCards <= (call - 1)
+            && opponentCards + oppCardsPlayed > (call - 1)) {
+            say = TRUE;
+        }
+    }
+    return say;
 }
 
 
