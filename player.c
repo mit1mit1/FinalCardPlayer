@@ -176,7 +176,7 @@ playerMove decideMove(Game game) {
         move.action = SAY_TRIO;
     // Check if I just played a card that wasn't a continue,
     // if so end turn
-    } else if (lastAction == PLAY_CARD
+    } else if (playerUsed[PLAY_CARD] = TRUE
         && cardValue(lastPlayerMove.card) != CONTINUE) {
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
@@ -185,6 +185,7 @@ playerMove decideMove(Game game) {
         && drawTwoPos != NOT_FOUND) {
             move.action = PLAY_CARD;
             move.card = handCard(game, drawTwoPos);
+            printf("Playing DRAW_TWO.\n");  
     // Check if I need to draw two
     // TODO: Add case for stacking of draw twos
     } else if (opponentValuePlayed == DRAW_TWO
@@ -198,7 +199,6 @@ playerMove decideMove(Game game) {
     } else {
         // Loop through all cards, see if any can be played.
         while (i < handCardCount(game)) {
-            printf("mPlayer0 go\n");
             Card currentCard = handCard(game, i);
             // Check if can play a draw two on a draw two
             if ((cardValue(topCard) == DRAW_TWO
