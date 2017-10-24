@@ -115,12 +115,17 @@ playerMove decideMove(Game game) {
     int numCardsDrawn = 0;
     int oppCardsPlayed = 0;
     int opponentValuePlayed = -1;
-    int opponentMoves = turnMoves(game, currentTurn(game) - 1);
+    int opponentMoves = 0;
+    
+    if (currentTurn(game) > 0) {
+        int opponentMoves = turnMoves(game, currentTurn(game) - 1);
+    }
+
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
     int drawTwoPos = findMatchingCardValue(game, DRAW_TWO != NOT_FOUND);
 
-    if (turnMoves(game, currentTurn(game)) != 0) {
+    if (playerMoves != 0) {
         firstMove = FALSE;
     }
 
@@ -176,7 +181,7 @@ playerMove decideMove(Game game) {
     // Check if I just played a card that wasn't a continue,
     // if so end turn
     } else if (lastAction == PLAY_CARD
-        && cardValue(lastMove.card) != CONTINUE) {
+        && cardValue(lastPlayerMove.card) != CONTINUE) {
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
     } else if (opponentValuePlayed == DRAW_TWO
