@@ -193,7 +193,7 @@ playerMove decideMove(Game game) {
     } else if (oppPlayedDT == TRUE
         && numCardsDrawn < 2) {
             move.action = DRAW_CARD;
-    } else if (oppPlayedDT == TRUEc
+    } else if (oppPlayedDT == TRUE
         && numCardsDrawn >= 2) {
             move.action = END_TURN;
     } else if (numCardsDrawn == 1) {
