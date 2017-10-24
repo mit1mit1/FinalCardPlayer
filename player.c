@@ -104,7 +104,7 @@ playerMove decideMove(Game game) {
     int playerUsed[6] = {FALSE};
     int numCardsDrawn = 0;
     int oppCardsPlayed = 0;
-    int opponentValuePlayed = -1;
+    int oppPlayedDT = -1;
     int opponentMoves = 0;
     
     if (currentTurn(game) > 0) {
@@ -126,7 +126,9 @@ playerMove decideMove(Game game) {
         opponentMove = pastMove(game, currentTurn(game) - 1,
             opponentMoves - j);
         if (opponentMove.action == PLAY_CARD) {
-            opponentValuePlayed = cardValue(opponentMove.card);
+            if (cardValue(opponentMove.card) == DRAW_TWO) {
+                oppPlayedDT = TRUE;
+            }
             foundOpponentCard = TRUE;
             oppCardsPlayed++;
         }
@@ -180,7 +182,7 @@ playerMove decideMove(Game game) {
         && cardValue(lastPlayerMove.card) != CONTINUE) {
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
-    } else if (opponentValuePlayed == DRAW_TWO
+    } else if (oppPlayedDT == TRUE
         && numCardsDrawn == 0
         && drawTwoPos != NOT_FOUND) {
             move.action = PLAY_CARD;
@@ -188,10 +190,10 @@ playerMove decideMove(Game game) {
             printf("Playing DRAW_TWO.\n");  
     // Check if I need to draw two
     // TODO: Add case for stacking of draw twos
-    } else if (opponentValuePlayed == DRAW_TWO
+    } else if (oppPlayedDT == TRUE
         && numCardsDrawn < 2) {
             move.action = DRAW_CARD;
-    } else if (opponentValuePlayed == DRAW_TWO
+    } else if (oppPlayedDT == TRUEc
         && numCardsDrawn >= 2) {
             move.action = END_TURN;
     } else if (numCardsDrawn == 1) {
