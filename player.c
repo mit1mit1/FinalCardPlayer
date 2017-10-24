@@ -189,10 +189,10 @@ playerMove decideMove(Game game) {
     // Check if I need to draw two
     // TODO: Add case for stacking of draw twos
     } else if (opponentValuePlayed == DRAW_TWO
-        && numCardsDrawn <= 2) {
+        && numCardsDrawn < 2) {
             move.action = DRAW_CARD;
     } else if (opponentValuePlayed == DRAW_TWO
-        && numCardsDrawn == 2) {
+        && numCardsDrawn >= 2) {
             move.action = END_TURN;
     } else if (numCardsDrawn == 1) {
             move.action = END_TURN;
