@@ -176,7 +176,7 @@ playerMove decideMove(Game game) {
         move.action = SAY_TRIO;
     // Check if I just played a card that wasn't a continue,
     // if so end turn
-    } else if (playerUsed[PLAY_CARD] = TRUE
+    } else if (playerUsed[PLAY_CARD] == TRUE
         && cardValue(lastPlayerMove.card) != CONTINUE) {
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
