@@ -112,10 +112,9 @@ playerMove decideMove(Game game) {
     if (currentTurn(game) > 0) {
         opponentMoves = turnMoves(game, currentTurn(game) - 1);
     }
-    printf("j = %d, oppMoves = %d", j, opponentMoves);
+
     // Loop through opponents turn to see what they played
     while (j <= opponentMoves && foundOpponentCard == FALSE) {
-        printf("Looping\n");
         opponentMove = pastMove(game, currentTurn(game) - 1,
             opponentMoves - j);
         if (opponentMove.action == PLAY_CARD) {
@@ -128,7 +127,6 @@ playerMove decideMove(Game game) {
         oppUsed[opponentMove.action] = TRUE;
         j++;
     }
-    printf("Exit loop\n");
 
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
@@ -191,14 +189,13 @@ playerMove decideMove(Game game) {
             move.action = PLAY_CARD;
             move.card = handCard(game, drawTwoPos);
             printf("Playing DRAW_TWO.\n");  
-    // Check if I need to draw two
-    // TODO: Add case for stacking of draw twos
-    } else if (oppPlayedDT == TRUE
-        && numCardsDrawn < 2) {
+    // Check if I need to draw more cards still
+    } else if (oppPlayedDT == TRUE) {
+        if (move.action == END_TURN && isValidMove(game, move) == FALSE) {
             move.action = DRAW_CARD;
-    } else if (oppPlayedDT == TRUE
-        && numCardsDrawn >= 2) {
+        } else if (isValidMove(game, move) == FALSE) {
             move.action = END_TURN;
+        }
     } else if (numCardsDrawn == 1) {
             move.action = END_TURN;
     } else {
