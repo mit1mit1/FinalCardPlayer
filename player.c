@@ -161,10 +161,9 @@ playerMove decideMove(Game game) {
     // Set default move
     //IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
     //IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
-    if (lastAction == DRAW_CARD || lastAction == PLAY_CARD) {
+    move.action = DRAW_CARD;
+    if (isValidMove(game, move) == FALSE) {
         move.action = END_TURN;
-    } else {
-        move.action = DRAW_CARD;
     }
 
     // Call out if necessary
@@ -191,11 +190,7 @@ playerMove decideMove(Game game) {
             printf("Playing DRAW_TWO.\n");  
     // Check if I need to draw more cards still
     } else if (oppPlayedDT == TRUE) {
-        if (move.action == END_TURN && isValidMove(game, move) == FALSE) {
-            move.action = DRAW_CARD;
-        } else if (isValidMove(game, move) == FALSE) {
-            move.action = END_TURN;
-        }
+        // Leave move as is
     } else if (numCardsDrawn == 1) {
             move.action = END_TURN;
     } else {
