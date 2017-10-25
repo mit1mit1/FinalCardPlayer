@@ -106,22 +106,14 @@ playerMove decideMove(Game game) {
     int oppCardsPlayed = 0;
     int oppPlayedDT = FALSE;
     int opponentMoves = 0;
+    int j = 1;
+    int foundOpponentCard = FALSE;
     
     if (currentTurn(game) > 0) {
-        int opponentMoves = turnMoves(game, currentTurn(game) - 1);
-    }
-
-    int playerMoves = turnMoves(game, currentTurn(game));
-    int canCallOut = TRUE;
-    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
-
-    if (playerMoves != 0) {
-        firstMove = FALSE;
+        opponentMoves = turnMoves(game, currentTurn(game) - 1);
     }
 
     // Loop through opponents turn to see what they played
-    int foundOpponentCard = FALSE;
-    int j = 1;
     while (j <= opponentMoves && foundOpponentCard == FALSE) {
         opponentMove = pastMove(game, currentTurn(game) - 1,
             opponentMoves - j);
@@ -142,6 +134,15 @@ playerMove decideMove(Game game) {
     } else if (oppPlayedDT == FALSE) {
         printf("Opponent has not played DRAW_TWO\n");
     }
+
+    int playerMoves = turnMoves(game, currentTurn(game));
+    int canCallOut = TRUE;
+    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
+
+    if (playerMoves != 0) {
+        firstMove = FALSE;
+    }
+
 
     j = 1;
     // Check if the current player has drawn two or more
@@ -167,10 +168,9 @@ playerMove decideMove(Game game) {
     // Set default move
     //IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
     //IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
-    if (lastAction == DRAW_CARD||lastAction == PLAY_CARD) {
+    move.action = DRAW_CARD;
+    if (isValidMove(game, move) == FALSE) {
         move.action = END_TURN;
-    } else {
-        move.action = DRAW_CARD;
     }
 
     // Call out if necessary
@@ -195,14 +195,9 @@ playerMove decideMove(Game game) {
             move.action = PLAY_CARD;
             move.card = handCard(game, drawTwoPos);
             printf("Playing DRAW_TWO.\n");  
-    // Check if I need to draw two
-    // TODO: Add case for stacking of draw twos
-    } else if (oppPlayedDT == TRUE
-        && numCardsDrawn < 2) {
-            move.action = DRAW_CARD;
-    } else if (oppPlayedDT == TRUE
-        && numCardsDrawn >= 2) {
-            move.action = END_TURN;
+    // Check if I need to draw more cards still
+    } else if (oppPlayedDT == TRUE) {
+        // Leave move as is
     } else if (numCardsDrawn == 1) {
             move.action = END_TURN;
     } else if (oppPlayedDT == FALSE) {
