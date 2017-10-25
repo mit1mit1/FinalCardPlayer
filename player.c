@@ -92,7 +92,7 @@ playerMove decideMove(Game game) {
         swapDirection(playDirection(game)));
     int i = 0;
     int priority = 0;
-    Card topCard = topDiscard(game);
+    Card topCard = topDiscard(game); //HERE?
     playerMove move;
     // Is this the start of the current players turn?
     int firstMove = TRUE;
@@ -129,11 +129,11 @@ playerMove decideMove(Game game) {
         
     }
    
-    if (oppPlayedDT == TRUE) {
+    /*if (oppPlayedDT == TRUE) {
         printf("Opponent has played DRAW_TWO\n");
     } else if (oppPlayedDT == FALSE) {
         printf("Opponent has not played DRAW_TWO\n");
-    }
+    }*/
 
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
@@ -186,7 +186,8 @@ playerMove decideMove(Game game) {
     // Check if I just played a card that wasn't a continue,
     // if so end turn
     } else if (playerUsed[PLAY_CARD] == TRUE
-        && cardValue(lastPlayerMove.card) != CONTINUE) {
+        && lastPlayerMove.action == PLAY_CARD
+        && cardValue(lastPlayerMove.card) != CONTINUE) {// THIS 
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
     } else if (oppPlayedDT == TRUE
