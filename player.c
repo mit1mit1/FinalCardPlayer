@@ -106,23 +106,16 @@ playerMove decideMove(Game game) {
     int oppCardsPlayed = 0;
     int oppPlayedDT = -1;
     int opponentMoves = 0;
+    int j = 1;
+    int foundOpponentCard = FALSE;
     
     if (currentTurn(game) > 0) {
-        int opponentMoves = turnMoves(game, currentTurn(game) - 1);
+        opponentMoves = turnMoves(game, currentTurn(game) - 1);
     }
-
-    int playerMoves = turnMoves(game, currentTurn(game));
-    int canCallOut = TRUE;
-    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
-
-    if (playerMoves != 0) {
-        firstMove = FALSE;
-    }
-
+    printf("j = %d, oppMoves = %d", j, opponentMoves);
     // Loop through opponents turn to see what they played
-    int foundOpponentCard = FALSE;
-    int j = 1;
     while (j <= opponentMoves && foundOpponentCard == FALSE) {
+        printf("Looping\n");
         opponentMove = pastMove(game, currentTurn(game) - 1,
             opponentMoves - j);
         if (opponentMove.action == PLAY_CARD) {
@@ -135,6 +128,16 @@ playerMove decideMove(Game game) {
         oppUsed[opponentMove.action] = TRUE;
         j++;
     }
+    printf("Exit loop\n");
+
+    int playerMoves = turnMoves(game, currentTurn(game));
+    int canCallOut = TRUE;
+    int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
+
+    if (playerMoves != 0) {
+        firstMove = FALSE;
+    }
+
 
     j = 1;
     // Check if the current player has drawn two or more
@@ -160,7 +163,7 @@ playerMove decideMove(Game game) {
     // Set default move
     //IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
     //IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
-    if (lastAction == DRAW_CARD||lastAction == PLAY_CARD) {
+    if (lastAction == DRAW_CARD || lastAction == PLAY_CARD) {
         move.action = END_TURN;
     } else {
         move.action = DRAW_CARD;
