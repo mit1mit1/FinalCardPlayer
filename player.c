@@ -126,7 +126,14 @@ playerMove decideMove(Game game) {
         }
         oppUsed[opponentMove.action] = TRUE;
         j++;
+        
     }
+   
+    /*if (oppPlayedDT == TRUE) {
+        printf("Opponent has played DRAW_TWO\n");
+    } else if (oppPlayedDT == FALSE) {
+        printf("Opponent has not played DRAW_TWO\n");
+    }*/
 
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
