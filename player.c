@@ -104,7 +104,7 @@ playerMove decideMove(Game game) {
     int playerUsed[6] = {FALSE};
     int numCardsDrawn = 0;
     int oppCardsPlayed = 0;
-    int oppPlayedDT = -1;
+    int drawTwosPlayed = 0;
     int opponentMoves = 0;
     int j = 1;
     int foundOpponentCard = FALSE;
@@ -119,7 +119,7 @@ playerMove decideMove(Game game) {
             opponentMoves - j);
         if (opponentMove.action == PLAY_CARD) {
             if (cardValue(opponentMove.card) == DRAW_TWO) {
-                oppPlayedDT = TRUE;
+                drawTwosPlayed++;
             }
             foundOpponentCard = TRUE;
             oppCardsPlayed++;
@@ -182,14 +182,14 @@ playerMove decideMove(Game game) {
         && cardValue(lastPlayerMove.card) != CONTINUE) {
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
-    } else if (oppPlayedDT == TRUE
+    } else if (drawTwosPlayed > 0
         && numCardsDrawn == 0
         && drawTwoPos != NOT_FOUND) {
             move.action = PLAY_CARD;
             move.card = handCard(game, drawTwoPos);
             printf("Playing DRAW_TWO.\n");  
     // Check if I need to draw more cards still
-    } else if (oppPlayedDT == TRUE) {
+    } else if (drawTwosPlayed > 0) {
         // Leave move as is
     } else if (numCardsDrawn == 1) {
             move.action = END_TURN;
