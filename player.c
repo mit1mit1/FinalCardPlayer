@@ -370,6 +370,7 @@ static int hasCalled (Game game, action call) {
         if ((move.action == call) && (cardHasBeenPlayed == TRUE)) {
             callHasBeenSaid = TRUE;
         }
+        i++;
     }
     
     return callHasBeenSaid;
