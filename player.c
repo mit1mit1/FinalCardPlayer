@@ -184,7 +184,7 @@ playerMove decideMove(Game game) {
         && drawTwoPos != NOT_FOUND) {
             move.action = PLAY_CARD;
             move.card = handCard(game, drawTwoPos);
-            printf("Playing DRAW_TWO.\n");  
+            // printf("Playing DRAW_TWO.\n");  
     // Check if I need to draw more cards still
     } else if (drawTwosPlayed > 0) {
         // Leave move as is
