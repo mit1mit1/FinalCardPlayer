@@ -155,7 +155,9 @@ playerMove decideMove(Game game) {
             numCardsDrawn++;
         } else if (currentPlayerMove.action == PLAY_CARD
             && lastCardValue == -1) {
-                lastCardValue = cardValue(lastPlayerMove.card);
+		// printf("accessing past card\n");
+                lastCardValue = cardValue(currentPlayerMove.card);
+		// printf("accessed last card\n");
         }
         j++;
     }
