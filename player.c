@@ -106,6 +106,7 @@ playerMove decideMove(Game game) {
     int opponentMoves = 0;
     int j = 1;
     int foundOpponentCard = FALSE;
+    int lastCardValue = -1;
 
     if (turn == 0
         && cardValue(topDiscard(game)) == DRAW_TWO) {
@@ -156,6 +157,10 @@ playerMove decideMove(Game game) {
         j++;
     }
 
+    if (lastPlayerMove.action == PLAY_CARD) {
+        lastCardValue = cardValue(lastPlayerMove.card);
+    }
+
     // Set default move
     // IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
     // IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
@@ -177,7 +182,7 @@ playerMove decideMove(Game game) {
     // Check if I just played a card that wasn't a continue,
     // if so end turn
     } else if (playerUsed[PLAY_CARD] == TRUE
-        && cardValue(lastPlayerMove.card) != CONTINUE) {
+        && lastCardValue != CONTINUE) {
             move.action = END_TURN;
     // Play DRAW_TWO on last DRAW_TWO if possible
     } else if (drawTwosPlayed > 0
