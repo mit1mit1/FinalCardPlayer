@@ -121,7 +121,6 @@ playerMove decideMove(Game game) {
             foundOpponentCard = TRUE;
             oppCardsPlayed++;
         }
-        oppUsed[opponentMove.action] = TRUE;
         j++;
         
     }
@@ -134,11 +133,6 @@ playerMove decideMove(Game game) {
 
     int playerMoves = turnMoves(game, currentTurn(game));
     int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
-
-    if (playerMoves != 0) {
-        firstMove = FALSE;
-    }
-
 
     j = 1;
     // Check if the current player has drawn two or more
