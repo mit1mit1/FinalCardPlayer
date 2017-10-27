@@ -91,6 +91,7 @@ playerMove decideMove(Game game) {
     int lastPlayer = cyclePlayer(currentPlayer(game),
         swapDirection(playDirection(game)));
     int i = 0;
+    int turn = currentTurn(game);
     int priority = 0;
     Card topCard = topDiscard(game);
     playerMove move;
@@ -106,16 +107,16 @@ playerMove decideMove(Game game) {
     int j = 1;
     int foundOpponentCard = FALSE;
 
-    if (currentTurn(game) == 0
+    if (turn == 0
         && cardValue(topDiscard(game)) == DRAW_TWO) {
         drawTwosPlayed = 1;
-    } else {
-        opponentMoves = turnMoves(game, currentTurn(game) - 1);
+    } else if (turn > 0) {
+        opponentMoves = turnMoves(game, turn - 1);
     }
 
     // Loop through opponents turn to see what they played
     while (j <= opponentMoves && foundOpponentCard == FALSE) {
-        opponentMove = pastMove(game, currentTurn(game) - 1,
+        opponentMove = pastMove(game, turn - 1,
             opponentMoves - j);
         if (opponentMove.action == PLAY_CARD) {
             if (cardValue(opponentMove.card) == DRAW_TWO) {
@@ -134,7 +135,7 @@ playerMove decideMove(Game game) {
         printf("Opponent has not played DRAW_TWO\n");
     }*/
 
-    int playerMoves = turnMoves(game, currentTurn(game));
+    int playerMoves = turnMoves(game, turn);
     int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
 
     j = 1;
