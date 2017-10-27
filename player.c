@@ -153,12 +153,11 @@ playerMove decideMove(Game game) {
 
         if (currentPlayerMove.action == DRAW_CARD) {
             numCardsDrawn++;
+        } else if (currentPlayerMove.action == PLAY_CARD
+            && lastCardValue = -1) {
+                lastCardValue = cardValue(lastPlayerMove.card);
         }
         j++;
-    }
-
-    if (lastPlayerMove.action == PLAY_CARD) {
-        lastCardValue = cardValue(lastPlayerMove.card);
     }
 
     // Set default move
