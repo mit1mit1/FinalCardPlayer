@@ -319,7 +319,7 @@ static int doCardsMatch (Card first, Card second) {
     int match = FALSE;
     if (cardValue(first) == cardValue(second)
         || cardSuit(first) == cardSuit(second)
-        || cardColor(first) == cardSuit(second)) {
+        || cardColor(first) == cardColor(second)) {
         match = TRUE;
     }
 
