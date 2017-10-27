@@ -105,8 +105,11 @@ playerMove decideMove(Game game) {
     int opponentMoves = 0;
     int j = 1;
     int foundOpponentCard = FALSE;
-    
-    if (currentTurn(game) > 0) {
+
+    if (currentTurn(game) == 0
+        && cardValue(topDiscard(game)) == DRAW_TWO) {
+        drawTwosPlayed = 1;
+    } else {
         opponentMoves = turnMoves(game, currentTurn(game) - 1);
     }
 
