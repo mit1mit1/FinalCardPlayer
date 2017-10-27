@@ -94,13 +94,10 @@ playerMove decideMove(Game game) {
     int priority = 0;
     Card topCard = topDiscard(game);
     playerMove move;
-    // Is this the start of the current players turn?
-    int firstMove = TRUE;
     playerMove opponentMove;
     playerMove currentPlayerMove;
     playerMove lastPlayerMove;
     int lastAction = -1;
-    int oppUsed[6] = {FALSE};
     int playerUsed[6] = {FALSE};
     int numCardsDrawn = 0;
     int oppCardsPlayed = 0;
@@ -136,7 +133,6 @@ playerMove decideMove(Game game) {
     }*/
 
     int playerMoves = turnMoves(game, currentTurn(game));
-    int canCallOut = TRUE;
     int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
 
     if (playerMoves != 0) {
@@ -157,10 +153,7 @@ playerMove decideMove(Game game) {
         playerUsed[currentPlayerMove.action] = TRUE;
 
         if (currentPlayerMove.action == DRAW_CARD) {
-            canCallOut = FALSE;
             numCardsDrawn++;
-        } else if (currentPlayerMove.action == PLAY_CARD) {
-            canCallOut = FALSE;
         }
         j++;
     }
