@@ -166,8 +166,8 @@ playerMove decideMove(Game game) {
     }
 
     // Set default move
-    //IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
-    //IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
+    // IF PREVIOUS MOVE WAS DRAW CARD THEN END THE TURN
+    // IF THE PREVIOUS MOVE WAS SOMETHING ELSE THEN DRAW A CARD
     move.action = DRAW_CARD;
     if (isValidMove(game, move) == FALSE) {
         move.action = END_TURN;
