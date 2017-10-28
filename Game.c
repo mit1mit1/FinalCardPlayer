@@ -13,6 +13,7 @@
 
 #include "Card.h"
 #include "Game.h"
+
 #include <assert.h>
 #include <err.h>
 #include <stdio.h>
@@ -37,22 +38,27 @@ typedef struct _cardList {
 
 
 //_____List of moves_______
-typedef struct _playerMove *PlayerMove;
-
-
-//_______________TURNLIST___________________
-typedef struct _turnNode *TurnNode;
 typedef struct _moveNode *MoveNode;
 
+typedef struct _moveNode {
+    playerMove move;
+    MoveNode next;
+} moveNode;
+
+
+//_____List of turns_______
+typedef struct _turnNode *TurnNode;
+typedef struct _turnList *TurnList;
+
 typedef struct _turnNode {
-    TurnNode next;
+    int player;
     MoveNode head;
+    TurnNode next;
 } turnNode;
 
-typedef struct _moveNode {
-    MoveNode next;
-    playerMove move;
-} moveNode;
+typedef struct _turnList {
+    TurnNode head;
+} turnList;
 
 
 // The following typedef is included in Game.h:
@@ -73,31 +79,32 @@ typedef struct _moveNode {
 // direction
 //
 typedef struct _game {
-    cardList deckPile;
-    cardList discardPile;
-    cardList *playerHands;
-    TurnNode pastTurns;
-    int turnNumber;
     int activePlayer;
-    direction direction;
-    color activeColor;
+    int drawTwos;
     int totalCards;
+    int turnNumber;
     int *cardsOfColor;
     int *cardsOfSuit;
     int *cardsOfValue;
+    color activeColor;
+    direction direction;
+    cardList deckPile;
+    cardList discardPile;
+    cardList *playerHands;
+    TurnList pastTurns;
 } game;
 
-static CardNode newCardNode (Card val);
-static MoveNode newMoveNode (playerMove val);
-static direction swapDirection(direction toSwap);
-static int cyclePlayer(int player, direction gameDirection);
-static int hasCard(Game game, Card card);
 static int cardsEqual(Card firstCard, Card secondCard);
 static int cardsSimilar(Card firstCard, Card secondCard);
-static TurnNode newTurnNode (Game game, MoveNode firstMove);
-static void linkMoveToPastTurns (Game game, MoveNode playedMove);
-static void playHandCard(Game game, playerMove move);
+static int cyclePlayer(int player, direction gameDirection);
 static void giveCards(Game game, int player, int numCards);
+static int hasCard(Game game, Card card);
+static void linkMoveToPastTurns (Game game, MoveNode playedMove);
+static CardNode newCardNode (Card val);
+static MoveNode newMoveNode (playerMove val);
+static TurnNode newTurnNode (Game game, MoveNode firstMove);
+static void playHandCard(Game game, playerMove move);
+static direction swapDirection(direction toSwap);
 
 // Create a new game engine.
 //
@@ -120,7 +127,7 @@ Game newGame(int deckSize, value values[], color colors[], suit suits[]) {
         exit(EXIT_FAILURE);
     }
     
-    new->pastTurns = calloc(1, sizeof(struct _turnNode));
+    new->pastTurns = calloc(1, sizeof(struct _turnList));
     //new->pastTurns = NULL;
 
 
@@ -130,6 +137,7 @@ Game newGame(int deckSize, value values[], color colors[], suit suits[]) {
     // Set simple initial values
     new->turnNumber = 0;
     new->activePlayer = 0;
+    new->drawTwos = 0;
     new->direction = CLOCKWISE;
     new->totalCards = deckSize;
 
@@ -225,9 +233,17 @@ Game newGame(int deckSize, value values[], color colors[], suit suits[]) {
     // Make the bottom of the discard pile point to nothing
     currentCard->next = NULL;
 
+    Card topCard = new->discardPile.head->card;
+
     // Reverse diection if card flipped was a reverse
-    if (cardValue(new->discardPile.head->card) == BACKWARDS) {
+    if (cardValue(topCard) == BACKWARDS) {
         new->direction = ANTICLOCKWISE;
+    // Skip first player if first card played was advance
+    } else if (cardValue(topCard) == ADVANCE) {
+        new->activePlayer = 1;
+    // Force draw two if first card played was drawTwo
+    } else if (cardValue(topCard) == DRAW_TWO) {
+        new->drawTwos = 1;
     }
 
     return new;
@@ -280,7 +296,7 @@ void destroyGame(Game game) {
     }
 
     // Free past moves
-    TurnNode currentTurn = game->pastTurns;
+    TurnNode currentTurn = game->pastTurns->head;
     TurnNode prevTurn;
     MoveNode currentMove;
     MoveNode prevMove;
@@ -288,7 +304,6 @@ void destroyGame(Game game) {
         currentMove = currentTurn->head;
         // Free all moves for a turn in the same way as freeing cards
         while (currentMove != NULL) {
-            free(&currentMove->move);
             prevMove = currentMove;
             currentMove = currentMove->next;
             free(prevMove);
@@ -397,23 +412,32 @@ int numTurns(Game game) {
 // A turn may consist of multiple moves such as drawing cards,
 // playing cards, and ending the turn.
 int turnMoves(Game game, int turn) {
-    TurnNode currTurn = game->pastTurns;
+    TurnNode currTurn = game->pastTurns->head;
+    TurnNode prevTurn;
     int numMoves = 0;
     int numTurns = 0;
     if (currTurn != NULL) {
         while (currTurn->next != NULL && numTurns < turn) {
+            prevTurn = currTurn;
             currTurn = currTurn->next;
+            if (currTurn != NULL) {
+                assert(prevTurn->player != currTurn->player);
+            }
             numTurns++;
         }
-        MoveNode currMove = currTurn->head;
-        if (currMove != NULL) {
-            // Has already been one move
-            numMoves++;
-            while (currMove->next != NULL) {
-                currMove = currMove->next;
+
+        if (numTurns == turn) {
+            MoveNode currMove = currTurn->head;
+            if (currMove != NULL) {
+                // Has already been one move
                 numMoves++;
+                while (currMove->next != NULL) {
+                    currMove = currMove->next;
+                    numMoves++;
+                }
             }
         }
+
     }
 
     return numMoves;
@@ -422,7 +446,7 @@ int turnMoves(Game game, int turn) {
 // Look at a previous move from a specified turn.
 playerMove pastMove(Game game, int turn, int move) {
 
-    TurnNode currTurn = game->pastTurns;
+    TurnNode currTurn = game->pastTurns->head;
     int numMoves = 0;
     int numTurns = 0;
     while (currTurn->next != NULL && numTurns < turn) {
@@ -526,7 +550,7 @@ int isValidMove(Game game, playerMove move) {
     int playerUsed[6] = {FALSE};
     int numCardsDrawn = 0;
     int oppCardsPlayed = 0;
-    int opponentValuePlayed = -1;
+    int currCardsPlayed = 0;
     int opponentMoves = turnMoves(game, currentTurn(game) - 1);
     int playerMoves = turnMoves(game, currentTurn(game));
     int canCallOut = TRUE;
@@ -542,7 +566,6 @@ int isValidMove(Game game, playerMove move) {
         opponentMove = pastMove(game, currentTurn(game) - 1,
             opponentMoves - j);
         if (opponentMove.action == PLAY_CARD) {
-            opponentValuePlayed = cardValue(opponentMove.card);
             foundOpponentCard = TRUE;
             oppCardsPlayed++;
         }
@@ -564,21 +587,21 @@ int isValidMove(Game game, playerMove move) {
         if (currentPlayerMove.action == DRAW_CARD) {
             canCallOut = FALSE;
             numCardsDrawn++;
+            printf("Num cards drawn %d\n", numCardsDrawn);
         } else if (currentPlayerMove.action == PLAY_CARD) {
             canCallOut = FALSE;
+            currCardsPlayed++;
         }
         j++;
     }
 
     // Allowed to draw 1 normally, 2*drawtwosplayed otherwise
-    // TODO: Add case for stacking of draw twos
     if (move.action == DRAW_CARD) {
-        if (opponentValuePlayed == DRAW_TWO) {
-            if (numCardsDrawn >= 2) {
+        if (game->drawTwos > 0) {
+            if (numCardsDrawn >= (2 * game->drawTwos)) {
                 isValid = FALSE;
             }
         } else if (numCardsDrawn >= 1) {
-            printf("%d\n", opponentValuePlayed);
             isValid = FALSE;
         }
     // Check declaring conditions
@@ -633,9 +656,10 @@ int isValidMove(Game game, playerMove move) {
         }
     // Check if player has failed to draw two
     } else if (currentTurn(game) >= 1
-        && opponentValuePlayed == DRAW_TWO
+        && game->drawTwos > 0
         && numCardsDrawn < 2
-        && move.action != PLAY_CARD) {
+        && move.action != PLAY_CARD
+        && currCardsPlayed == 0) {
         printf("Failed to draw two.\n");
         isValid = FALSE;
     // Check if player is trying to skip their turn
@@ -650,9 +674,10 @@ int isValidMove(Game game, playerMove move) {
     // they just played
     } else if (move.action == PLAY_CARD) {
         if (numCardsDrawn != 0) {
+            printf("Playing after drawing %d cards.\n", numCardsDrawn);
             isValid = FALSE;
         // Can only play a draw two if opponent played a draw two
-        } else if (opponentValuePlayed == DRAW_TWO
+        } else if (game->drawTwos > 0
             && cardValue(move.card) != DRAW_TWO) {
             isValid = FALSE;
         // Otherwise, can always play a wild
@@ -691,9 +716,17 @@ void playMove(Game game, playerMove move) {
             linkMoveToPastTurns(game, newMove);
 
         } else if (newMove->move.action == END_TURN) {
+
+            if (pastMove(game,
+                currentTurn(game),
+                turnMoves(game, currentTurn(game)) - 1
+            ).action == DRAW_CARD) {
+                game->drawTwos = 0;
+            }
+
             linkMoveToPastTurns(game, newMove);
 
-            TurnNode currTurn = game->pastTurns;
+            TurnNode currTurn = game->pastTurns->head;
 
             while (currTurn->next != NULL) {
                 currTurn = currTurn->next;
@@ -736,22 +769,27 @@ void playMove(Game game, playerMove move) {
             playHandCard(game, newMove->move);
 
             if (cardValue(newMove->move.card) == DRAW_TWO) {
-                //Do Nothing
+                game->drawTwos++;
+            } else {
 
-            } else if (cardValue(newMove->move.card) == ADVANCE) {
-                // Will alter END_TURN
+                game->drawTwos = 0;
 
-            } else if (cardValue(newMove->move.card) == BACKWARDS) {
-                game->direction = swapDirection(game->direction);
+                if (cardValue(newMove->move.card) == ADVANCE) {
+                    // Will alter END_TURN
 
-            } else if (cardValue(newMove->move.card) == CONTINUE) {
-                //Do Nothing
+                } else if (cardValue(newMove->move.card) == BACKWARDS) {
+                    game->direction = swapDirection(game->direction);
 
-            } else if (cardValue(newMove->move.card) == DECLARE) {
-                //Will override/re-initialise the activeColor determined
-                //by the playHandCard function.
-                game->activeColor = newMove->move.nextColor;
+                } else if (cardValue(newMove->move.card) == CONTINUE) {
+                    //Do Nothing
+
+                } else if (cardValue(newMove->move.card) == DECLARE) {
+                    //Will override/re-initialise the activeColor determined
+                    //by the playHandCard function.
+                    game->activeColor = newMove->move.nextColor;
+                }
             }
+
 
             // End game if player is out of cards
 
@@ -779,74 +817,7 @@ int gameWinner(Game game) {
 }
 
 
-static CardNode newCardNode (Card val) {
-    CardNode newCardNode = calloc(1, sizeof(cardNode));
-
-    if (newCardNode == NULL) {
-        err(EXIT_FAILURE, "couldn't allocate space for cardNode.");
-    }
-
-    newCardNode->next = NULL;
-    newCardNode->card = val;
-
-    return newCardNode;
-}
-
-static MoveNode newMoveNode (playerMove val) {
-    MoveNode newMoveNode = calloc(1, sizeof(moveNode));
-
-    if (newMoveNode == NULL) {
-        err(EXIT_FAILURE, "couldn't allocate space for moveNode.");
-    }
-
-    newMoveNode->next = NULL;
-    newMoveNode->move = val;
-
-    return newMoveNode;
-}
-
-// Return opposite direction
-static direction swapDirection(direction toSwap) {
-    if (toSwap == CLOCKWISE) {
-        return ANTICLOCKWISE;
-    } else {
-        return CLOCKWISE;
-    }
-}
-
-// Return the player that should go next
-static int cyclePlayer(int player, direction gameDirection) {
-    if (gameDirection == CLOCKWISE) {
-        // printf("Clockwise\n");
-        player++;
-    } else {
-        // printf("Anticlockwise\n");
-        player--;
-    }
-    player = player % 4;
-
-    if (player < 0) {
-        player += 4;
-    }
-
-    return player;
-}
-
-// Check if the current player has a given card in their hand
-static int hasCard(Game game, Card card) {
-    int hasIt = FALSE;
-    int i = 0;
-
-    while (i < handCardCount(game) && hasIt == FALSE) {
-        if (cardsEqual(card, handCard(game, i)) == TRUE) {
-            hasIt = TRUE;
-        }
-        i++;
-    }
-
-    return TRUE;
-}
-
+// BEGIN STATIC FUNCTIONS
 
 // Check if two cards are equal (same value, suit, color)
 static int cardsEqual(Card firstCard, Card secondCard) {
@@ -874,8 +845,151 @@ static int cardsSimilar(Card firstCard, Card secondCard) {
     return similar;
 }
 
+// Return the player that should go next
+static int cyclePlayer(int player, direction gameDirection) {
+    if (gameDirection == CLOCKWISE) {
+        // printf("Clockwise\n");
+        player++;
+    } else {
+        // printf("Anticlockwise\n");
+        player--;
+    }
+    player = player % 4;
 
+    if (player < 0) {
+        player += 4;
+    }
 
+    return player;
+}
+
+// Give a specified player cards
+static void giveCards(Game game, int player, int numCards) {
+    int i = 0;
+
+    CardNode flipping;
+
+    while (i < numCards) {
+        // Replenish deck from discard pile if necessary
+        if (game->deckPile.head == NULL) {
+            if (game->discardPile.head == NULL
+                || game->discardPile.head->next == NULL) {
+                assert(1 == 0);
+            } else {
+                while (game->discardPile.head->next != NULL) {
+                    // Get the card we're flipping
+                    flipping = game->discardPile.head->next;
+                    // Make the discard pile skip over it
+                    game->discardPile.head->next = flipping->next;
+                    // Point the flipped card to the current decktop
+                    flipping->next = game->deckPile.head;
+                    // Point the decktop to the flipped card
+                    game->deckPile.head = flipping;
+                }
+            }
+        }
+
+        // Get a card from the deck, make the deck start with
+        // the card below it
+        CardNode deckCard = game->deckPile.head;
+        game->deckPile.head = deckCard->next;
+
+        // Put the deckcard at the front of the players hand
+        deckCard->next = game->playerHands[player].head;
+        game->playerHands[player].head = deckCard;
+
+        i++;
+    }
+
+}
+
+// Check if the current player has a given card in their hand
+static int hasCard(Game game, Card card) {
+    int hasIt = FALSE;
+    int i = 0;
+
+    while (i < handCardCount(game) && hasIt == FALSE) {
+        if (cardsEqual(card, handCard(game, i)) == TRUE) {
+            hasIt = TRUE;
+        }
+        i++;
+    }
+
+    return TRUE;
+}
+
+// Function takes any move and links the move to the appropriate position
+// in the pastTurns stack. If a new turn must be added to the pastTurns 
+// stack, function will also allocate new memory to do so by calling the
+// helper funtion TurnNode newTurnNode.
+static void linkMoveToPastTurns (Game game, MoveNode playedMove) {
+    TurnNode currTurn;
+
+    // Case for 1st move of 1st turn.
+    // Allocates new memory for 1st turn.
+    if (game->pastTurns->head == NULL) {
+        TurnNode firstTurn = newTurnNode(game, playedMove);
+        game->pastTurns->head = firstTurn;
+        currTurn = game->pastTurns->head;
+        
+    // Cases for when it is not 1st turn.
+    } else {
+        currTurn = game->pastTurns->head;
+        while (currTurn->next != NULL) {
+            //Loops unitl most recent turn.
+            //Most recent turns are at the tail of the TurnList stack.
+            currTurn = currTurn->next;
+        }
+    }
+
+    MoveNode currMove = currTurn->head;
+    while (currMove->next != NULL) {
+        // Loops unitl most recent move
+        // The most recent move is placed at the tail of the
+        // playerMove stack of the current turn.
+        currMove = currMove->next;
+    }
+
+    if (currMove->move.action != END_TURN) {
+        // Case where the played move is not 1st move of the
+        // current turn.
+        // Links playedMove to tail of playerMove stack of the turn.
+        currMove->next = playedMove;
+        playedMove->next = NULL;
+
+    } else if (currMove->move.action == END_TURN) {
+        // Case where the played move is the 1st move of the turn.
+        // Adds new turn to the tail of pastTurns stack.
+        TurnNode newTurn = newTurnNode(game, playedMove);
+        currTurn->next = newTurn;
+    }
+}
+
+static CardNode newCardNode (Card val) {
+    CardNode newCardNode = calloc(1, sizeof(cardNode));
+
+    if (newCardNode == NULL) {
+        err(EXIT_FAILURE, "couldn't allocate space for cardNode.");
+    }
+
+    newCardNode->next = NULL;
+    newCardNode->card = val;
+
+    return newCardNode;
+}
+
+static MoveNode newMoveNode (playerMove val) {
+    MoveNode newMoveNode = calloc(1, sizeof(moveNode));
+
+    if (newMoveNode == NULL) {
+        err(EXIT_FAILURE, "couldn't allocate space for moveNode.");
+    }
+
+    newMoveNode->next = NULL;
+    newMoveNode->move = val;
+
+    return newMoveNode;
+}
 
 //Brian's static helper functions:
 
@@ -892,57 +1006,13 @@ static TurnNode newTurnNode (Game game, MoveNode firstMove) {
 
     newTurnNode->next = NULL;
     newTurnNode->head = firstMove;
+    newTurnNode->player = currentPlayer(game);
 
     return newTurnNode;
 }
 
-
-//Function takes any move and links the move to the appropriate position
-//in the pastTurns stack. If a new turn must be added to the pastTurns 
-//stack, function will also allocate new memory to do so by calling the
-//helper funtion TurnNode newTurnNode.
-static void linkMoveToPastTurns (Game game, MoveNode playedMove) {
-    //Case for 1st move of 1st turn.
-    //Allocates new memory for 1st turn.
-    if (game->pastTurns->head == NULL) {
-        TurnNode firstTurn = newTurnNode(game, playedMove);
-        game->pastTurns = firstTurn;
-    //Cases for when it is not 1st turn.
-    } else if (game->pastTurns != NULL) {
-        
-        TurnNode currTurn = game->pastTurns;
-        while (currTurn->next != NULL) {
-            //Loops unitl most recent turn.
-            //Most recent turns are at the tail of the TurnList stack.
-            currTurn = currTurn->next;
-        }
-        
-        MoveNode currMove = currTurn->head;
-        while (currMove->next != NULL) {
-            //Loops unitl most recent move
-            //The most recent move is placed at the tail of the
-            //playerMove stack of the current turn.
-            currMove = currMove->next;
-        }
-
-        if (currMove->move.action != END_TURN) {
-            //Case where the played move is not 1st move of the
-            //current turn.
-            //Links playedMove to tail of playerMove stack of the turn.
-            currMove->next = playedMove;
-            playedMove->next = NULL;
-
-        } else if (currMove->move.action == END_TURN) {
-            //Case where the played move is the 1st move of the turn.
-            //Adds new turn to the tail of pastTurns stack.
-            TurnNode newTurn = newTurnNode(game, playedMove);
-            currTurn->next = newTurn;
-        }
-    }
-}
-
 //Function moves card that is to be played inside the current player's
-//playerHands stack and places it at the top of discardPile stack.
+// playerHands stack and places it at the top of discardPile stack.
 static void playHandCard(Game game, playerMove move) {
 
         int currPlayer = currentPlayer(game);
@@ -988,43 +1058,11 @@ static void playHandCard(Game game, playerMove move) {
         game->activeColor = cardColor(move.card);
 }
 
-// Give a specified player cards
-static void giveCards(Game game, int player, int numCards) {
-    int i = 0;
-
-    CardNode flipping;
-
-    while (i < numCards) {
-        // Replenish deck from discard pile if necessary
-        if (game->deckPile.head == NULL) {
-            if (game->discardPile.head == NULL
-                || game->discardPile.head->next == NULL) {
-                // Ran out of cards - end the game
-                // TODO: what do we actually do here?
-            } else {
-                while (game->discardPile.head->next != NULL) {
-                    // Get the card we're flipping
-                    flipping = game->discardPile.head->next;
-                    // Make the discard pile skip over it
-                    game->discardPile.head->next = flipping->next;
-                    // Point the flipped card to the current decktop
-                    flipping->next = game->deckPile.head;
-                    // Point the decktop to the flipped card
-                    game->deckPile.head = flipping;
-                }
-            }
-        }
-
-        // Get a card from the deck, make the deck start with
-        // the card below it
-        CardNode deckCard = game->deckPile.head;
-        game->deckPile.head = deckCard->next;
-
-        // Put the deckcard at the front of the players hand
-        deckCard->next = game->playerHands[player].head;
-        game->playerHands[player].head = deckCard;
-
-        i++;
+// Return opposite direction
+static direction swapDirection(direction toSwap) {
+    if (toSwap == CLOCKWISE) {
+        return ANTICLOCKWISE;
+    } else {
+        return CLOCKWISE;
     }
-
 }
