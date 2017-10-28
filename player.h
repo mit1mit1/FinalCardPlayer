@@ -1,4 +1,4 @@
-// The player of Final Card-Down. v0.0.1
+// The player of Final Card-Down. v1.1.0
 //
 // !!! DO NOT CHANGE THIS FILE !!!
 
@@ -13,6 +13,6 @@
 // END_TURN.
 // If the player's turn is skipped, this funciton is not called for that
 // player.
-playerMove decideAction(Game game);
+playerMove decideMove(Game game);
 
 #endif
