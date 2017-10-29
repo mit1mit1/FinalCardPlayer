@@ -199,16 +199,9 @@ playerMove decideMove(Game game) {
                 move.action = PLAY_CARD;
                 move.card = currentCard;
                 priority = 3;
-            // Check if a wild was played - if so what color
-            } else if ((cardValue(topCard) == DECLARE
-                && cardColor(currentCard) == declaredColor(game))
-                && priority < 3) {
-                move.action = PLAY_CARD;
-                move.card = currentCard;
-                priority = 2;
             // Check if any cards can be played normally
             } else if ((cardSuit(currentCard) == cardSuit(topCard)
-                || cardColor(currentCard) == cardColor(topCard)
+                || cardColor(currentCard) == declaredColor(game)
                 || cardValue(currentCard) == cardValue(topCard))
                 && priority < 1) {
                 move.action = PLAY_CARD;
