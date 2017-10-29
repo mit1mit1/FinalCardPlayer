@@ -294,12 +294,13 @@ static color declaredColor(Game game) {
         int foundDeclared = -1;
         while (foundDeclared == -1) {
             int turn = currentTurn(game) - 1;
-            while (turn >= 0) {
+            if (turn >= 0) {
                 int moveNumber = turnMoves(game, turn) - 1;
                 playerMove move = pastMove(game, turn, moveNumber);
                 if (move.action == PLAY_CARD
                     && cardValue(move.card) == DECLARE) {
                     declared = move.nextColor;
+                    foundDeclared = 1;
                 }
             }
 
