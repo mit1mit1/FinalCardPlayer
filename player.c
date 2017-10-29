@@ -291,20 +291,20 @@ static int cyclePlayer(int player, direction gameDirection) {
 static color declaredColor(Game game) {
     color declared = cardColor(topDiscard(game));
     if (cardValue(topDiscard(game)) == DECLARE) {
-        int foundDeclared = -1;
-        while (foundDeclared == -1) {
+        //int foundDeclared = -1;
+        //while (foundDeclared == -1) {
             int turn = currentTurn(game) - 1;
-            if (turn >= 0) {
+            while (turn >= 0) {
                 int moveNumber = turnMoves(game, turn) - 1;
                 playerMove move = pastMove(game, turn, moveNumber);
                 if (move.action == PLAY_CARD
                     && cardValue(move.card) == DECLARE) {
                     declared = move.nextColor;
-                    foundDeclared = 1;
+                    //foundDeclared = 1;
                 }
+                turn--;
             }
-
-        }
+        //}
     }
 
     return declared;
