@@ -129,12 +129,7 @@ playerMove decideMove(Game game) {
         j++;
         
     }
-   
-    /*if (oppPlayedDT == TRUE) {
-        printf("Opponent has played DRAW_TWO\n");
-    } else if (oppPlayedDT == FALSE) {
-        printf("Opponent has not played DRAW_TWO\n");
-    }*/
+
 
     int playerMoves = turnMoves(game, turn);
     int drawTwoPos = findMatchingCardValue(game, DRAW_TWO);
@@ -155,9 +150,7 @@ playerMove decideMove(Game game) {
             numCardsDrawn++;
         } else if (currentPlayerMove.action == PLAY_CARD
             && lastCardValue == -1) {
-		// printf("accessing past card\n");
                 lastCardValue = cardValue(currentPlayerMove.card);
-		// printf("accessed last card\n");
         }
         j++;
     }
@@ -190,8 +183,7 @@ playerMove decideMove(Game game) {
         && numCardsDrawn == 0
         && drawTwoPos != NOT_FOUND) {
             move.action = PLAY_CARD;
-            move.card = handCard(game, drawTwoPos);
-            // printf("Playing DRAW_TWO.\n");  
+            move.card = handCard(game, drawTwoPos); 
     // Check if I need to draw more cards still
     } else if (drawTwosPlayed > 0) {
         // Leave move as is
@@ -289,7 +281,11 @@ static int cyclePlayer(int player, direction gameDirection) {
 
 // Return the active color
 static color declaredColor(Game game) {
+    // This is intially set as the color of the card
+    // on the top of the discard pile
     color declared = cardColor(topDiscard(game));
+    // Unless a declare has just been played, in which case it is 
+    // set as the declared color 
     if (cardValue(topDiscard(game)) == DECLARE) {
         int turn = currentTurn(game) - 1;
         while (turn >= 0) {
@@ -332,7 +328,6 @@ static int findMatchingCardColor (Game game, color color) {
         }
         i++;
     }
-    
     return match;
 }
 
