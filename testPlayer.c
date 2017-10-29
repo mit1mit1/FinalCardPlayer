@@ -55,8 +55,13 @@ int main(int argc, char *argv[]) {
     }
 
     Game game = newGame(800, vs, cs, ss);
-    playerMove move = decideMove(game);
-    playMove(game, move);
+    i = 0;
+    while (gameWinner(game) == NOT_FINISHED && i < 1000) {
+        playerMove move = decideMove(game);
+        playMove(game, move);
+        printf("Playing move!\n");
+        i++;
+    }
     printf("All tests passed.!\n");
     return EXIT_SUCCESS;
 }

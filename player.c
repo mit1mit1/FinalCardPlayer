@@ -252,6 +252,7 @@ static color commonestColor(Game game) {
             if (cardColor(handCard(game, j)) == i) {
                 currentCount++;
             }
+            j++;
         }
         if (currentCount > greatestCount) {
             commonest = i;
@@ -281,22 +282,27 @@ static int cyclePlayer(int player, direction gameDirection) {
 
 // Return the active color
 static color declaredColor(Game game) {
-    // This is intially set as the color of the card
-    // on the top of the discard pile
-    color declared = cardColor(topDiscard(game));
-    // Unless a declare has just been played, in which case it is 
-    // set as the declared color 
+    int declared = NOT_FOUND;
+    // Loop backwards to find when declare was played, and what color
+    // was declared
     if (cardValue(topDiscard(game)) == DECLARE) {
         int turn = currentTurn(game) - 1;
-        while (turn >= 0) {
+        while (turn >= 0 && declared == NOT_FOUND) {
             int moveNumber = turnMoves(game, turn) - 1;
-            playerMove move = pastMove(game, turn, moveNumber);
-            if (move.action == PLAY_CARD
-                && cardValue(move.card) == DECLARE) {
-                declared = move.nextColor;
+            while (moveNumber >= 0 && declared == NOT_FOUND) {
+                playerMove move = pastMove(game, turn, moveNumber);
+                if (move.action == PLAY_CARD
+                    && cardValue(move.card) == DECLARE) {
+                    declared = move.nextColor;
+                }
+                moveNumber--;
             }
             turn--;
         }
+    } else {
+        // This defaults to the color of the card
+        // on the top of the discard pile
+        declared = cardColor(topDiscard(game));
     }
 
     return declared;
